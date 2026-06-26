@@ -305,6 +305,7 @@ const processMessage = async (
 	}: ProcessMessageContext
 ) => {
 	const meId = creds.me!.id
+	const meLid = creds.me!.lid
 	const { accountSettings } = creds
 
 	const chat: Partial<Chat> = { id: jidNormalizedUser(getChatId(message.key)) }
@@ -356,11 +357,16 @@ const processMessage = async (
 			proto.Message.ProtocolMessage.Type.LID_MIGRATION_MAPPING_SYNC,
 			proto.Message.ProtocolMessage.Type.PEER_DATA_OPERATION_REQUEST_RESPONSE_MESSAGE
 		])
+
+		const from = jidDecode(message.key.participant || message.key.remoteJid!)
+		const isFromMe = (from?.server === "lid" ? jidDecode(meLid)?.user : jidDecode(meId)?.user) === from?.user
+
+		if (!message.key.fromMe && isFromMe) logger?.error({ meId, meLid, from }, "fromMe is wrong wtf how does that happen!!! anyway")
 		if (
 			protocolMsg.type !== null &&
 			protocolMsg.type !== undefined &&
 			SELF_ONLY_TYPES.has(protocolMsg.type) &&
-			!message.key.fromMe
+			!isFromMe
 		) {
 			logger?.warn(
 				{ msgId: message.key.id, type: protocolMsg.type, from: message.key.participant || message.key.remoteJid },
